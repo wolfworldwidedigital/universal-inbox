@@ -3,8 +3,6 @@
 use chrono::{Local, SecondsFormat};
 use dioxus::prelude::*;
 use dioxus_free_icons::{icons::bs_icons::BsPlug, Icon};
-use dioxus_router::prelude::*;
-use fermi::use_atom_ref;
 
 use universal_inbox::integration_connection::{IntegrationConnection, IntegrationConnectionStatus};
 
@@ -18,12 +16,10 @@ use crate::{
     },
 };
 
-pub fn Footer(cx: Scope) -> Element {
-    let integration_connections_ref = use_atom_ref(cx, &INTEGRATION_CONNECTIONS);
-    let ui_model_ref = use_atom_ref(cx, &UI_MODEL);
-    let notification_service = use_coroutine_handle::<NotificationCommand>(cx).unwrap();
+pub fn Footer() -> Element {
+    let notification_service = use_coroutine_handle::<NotificationCommand>();
 
-    render! {
+    rsx! {
         footer {
             class: "w-full",
 
@@ -38,40 +34,38 @@ pub fn Footer(cx: Scope) -> Element {
                     " to display keyboard shortcuts"
                 }
 
-                if let Some(integration_connections) = integration_connections_ref.read().as_ref() {
-                    render! {
-                        IntegrationConnectionsStatus {
-                            integration_connections: integration_connections.clone()
-                        }
+                if let Some(integration_connections) = INTEGRATION_CONNECTIONS.read().as_ref() {
+                    IntegrationConnectionsStatus {
+                        integration_connections: integration_connections.clone()
                     }
                 }
 
                 div { class: "divider divider-horizontal" }
 
-                match &ui_model_ref.read().notifications_count {
-                    Some(Ok(count)) => render! {
+                match &UI_MODEL.read().notifications_count {
+                    Some(Ok(count)) => rsx! {
                         div {
                             class: "tooltip tooltip-left",
                             "data-tip": "{count} notifications loaded",
                             button {
                                 class: "badge badge-success text-xs",
-                                onclick: |_| notification_service.send(NotificationCommand::Refresh),
+                                onclick: move |_| notification_service.send(NotificationCommand::Refresh),
                                 "{count}"
                             }
                         }
                     },
-                    Some(Err(error)) => render! {
+                    Some(Err(error)) => rsx! {
                         div {
                             class: "tooltip tooltip-left tooltip-error",
                             "data-tip": "{error}",
                             button {
                                 class: "badge badge-error text-xs",
-                                onclick: |_| notification_service.send(NotificationCommand::Refresh),
+                                onclick: move |_| notification_service.send(NotificationCommand::Refresh),
                                 "0"
                             }
                         }
                     },
-                    None => render! { span { class: "loading loading-ring loading-xs" } },
+                    None => rsx! { span { class: "loading loading-ring loading-xs" } },
                 }
 
                 div { class: "w-2" }
@@ -82,7 +76,6 @@ pub fn Footer(cx: Scope) -> Element {
 
 #[component]
 pub fn IntegrationConnectionsStatus(
-    cx: Scope,
     integration_connections: Vec<IntegrationConnection>,
 ) -> Element {
     let connection_issue_tooltip = if !integration_connections.iter().any(|c| c.is_connected()) {
@@ -96,17 +89,15 @@ pub fn IntegrationConnectionsStatus(
         None
     };
 
-    render! {
+    rsx! {
         if let Some(tooltip) = connection_issue_tooltip {
-            render! {
-                div {
-                    class: "tooltip tooltip-left text-xs text-error",
-                    "data-tip": "{tooltip}",
+            div {
+                class: "tooltip tooltip-left text-xs text-error",
+                "data-tip": "{tooltip}",
 
-                    Link {
-                        to: Route::SettingsPage {},
-                        Icon { class: "w-5 h-5", icon: BsPlug }
-                    }
+                Link {
+                    to: Route::SettingsPage {},
+                    Icon { class: "w-5 h-5", icon: BsPlug }
                 }
             }
         }
@@ -128,50 +119,51 @@ pub fn IntegrationConnectionsStatus(
 }
 
 #[component]
-pub fn IntegrationConnectionStatus(cx: Scope, connection: IntegrationConnection) -> Element {
+pub fn IntegrationConnectionStatus(connection: IntegrationConnection) -> Element {
     let provider_kind = connection.provider.kind();
-    let (connection_style, tooltip) =
-        use_memo(cx, &connection.clone(), |connection| match connection {
-            IntegrationConnection {
-                status: IntegrationConnectionStatus::Validated,
-                last_sync_started_at: started_at,
-                last_sync_failure_message: None,
-                ..
-            } => (
-                "text-success",
-                started_at
-                    .map(|started_at| {
-                        format!(
-                            "{provider_kind} successfully synced at {}",
-                            started_at
-                                .with_timezone(&Local)
-                                .to_rfc3339_opts(SecondsFormat::Secs, true)
-                        )
-                    })
-                    .unwrap_or_else(|| format!("{provider_kind} successfully synced")),
-            ),
-            IntegrationConnection {
-                status: IntegrationConnectionStatus::Failing,
-                failure_message: message,
-                ..
-            } => (
-                "text-error",
-                message
-                    .map(|message| format!("Connection failed: {message}"))
-                    .unwrap_or_else(|| "Connection failed".to_string()),
-            ),
-            IntegrationConnection {
-                last_sync_failure_message: message,
-                ..
-            } => (
-                "text-error",
-                message
-                    .map(|message| format!("Failed to sync: {message}"))
-                    .unwrap_or_else(|| "Failed to sync".to_string()),
-            ),
-        });
+    let (connection_style, tooltip) = use_memo(move || match &connection {
+        IntegrationConnection {
+            status: IntegrationConnectionStatus::Validated,
+            last_sync_started_at: started_at,
+            last_sync_failure_message: None,
+            ..
+        } => (
+            "text-success",
+            started_at
+                .map(|started_at| {
+                    format!(
+                        "{provider_kind} successfully synced at {}",
+                        started_at
+                            .with_timezone(&Local)
+                            .to_rfc3339_opts(SecondsFormat::Secs, true)
+                    )
+                })
+                .unwrap_or_else(|| format!("{provider_kind} successfully synced")),
+        ),
+        IntegrationConnection {
+            status: IntegrationConnectionStatus::Failing,
+            failure_message: message,
+            ..
+        } => (
+            "text-error",
+            message
+                .as_ref()
+                .map(|message| format!("Connection failed: {message}"))
+                .unwrap_or_else(|| "Connection failed".to_string()),
+        ),
+        IntegrationConnection {
+            last_sync_failure_message: message,
+            ..
+        } => (
+            "text-error",
+            message
+                .as_ref()
+                .map(|message| format!("Failed to sync: {message}"))
+                .unwrap_or_else(|| "Failed to sync".to_string()),
+        ),
+    })();
 
-    render! {
+    rsx! {
         div {
             class: "tooltip tooltip-left text-xs",
             "data-tip": "{tooltip}",

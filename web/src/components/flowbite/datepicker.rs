@@ -4,6 +4,7 @@ use std::{fmt::Display, marker::PhantomData, str::FromStr};
 
 use dioxus::prelude::*;
 use dioxus_free_icons::{icons::bs_icons::BsCalendarEvent, Icon};
+use gloo_timers::future::TimeoutFuture;
 use serde::{Deserialize, Serialize};
 use wasm_bindgen::prelude::*;
 use web_sys::{CustomEvent, HtmlInputElement, InputEvent, InputEventInit};
@@ -32,12 +33,12 @@ extern "C" {
     fn new(datepicker: web_sys::HtmlInputElement, options: JsValue) -> Datepicker;
 }
 
-#[derive(Props)]
-pub struct DatePickerProps<'a, T: 'static> {
-    name: String,
-    label: Option<&'a str>,
+#[derive(Props, Clone, PartialEq)]
+pub struct DatePickerProps<T: Clone + PartialEq + 'static> {
+    name: ReadOnlySignal<String>,
+    label: Option<String>,
     required: bool,
-    value: UseState<String>,
+    value: Signal<String>,
     #[props(default)]
     autofocus: bool,
     #[props(default)]
@@ -53,19 +54,20 @@ pub struct DatePickerProps<'a, T: 'static> {
 }
 
 #[component]
-pub fn DatePicker<'a, T>(cx: Scope<'a, DatePickerProps<'a, T>>) -> Element
+pub fn DatePicker<T>(props: DatePickerProps<T>) -> Element
 where
-    T: FromStr,
+    T: FromStr + Clone + PartialEq,
     <T as FromStr>::Err: Display,
 {
-    let today_button = cx.props.today_button;
-    let today_highlight = cx.props.today_highlight;
-    let autohide = cx.props.autohide;
-    let element_name = cx.props.name.clone();
+    let today_button = props.today_button;
+    let today_highlight = props.today_highlight;
+    let autohide = props.autohide;
 
-    use_on_create(cx, || async move {
+    use_future(move || async move {
+        // TODO: Remove this when after upgrading Dioxus
+        TimeoutFuture::new(10).await;
         // Initialize datepicker element
-        let element = get_element_by_id(&element_name)
+        let element = get_element_by_id(&props.name.read())
             .unwrap()
             .dyn_into::<HtmlInputElement>()
             .unwrap();
@@ -102,17 +104,17 @@ where
         closure.forget();
     });
 
-    let icon = render! { Icon { icon: BsCalendarEvent } };
+    let icon = rsx! { Icon { icon: BsCalendarEvent } };
 
-    render! {
+    rsx! {
         FloatingLabelInputText::<T> {
-            name: cx.props.name.clone(),
-            label: cx.props.label,
+            name: props.name.clone(),
+            label: props.label,
             icon: icon,
-            required: cx.props.required,
-            value: cx.props.value.clone(),
-            autofocus: cx.props.autofocus,
-            force_validation: cx.props.force_validation,
+            required: props.required,
+            value: props.value.clone(),
+            autofocus: props.autofocus,
+            force_validation: props.force_validation,
         }
     }
 }

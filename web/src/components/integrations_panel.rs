@@ -10,7 +10,7 @@ use dioxus_free_icons::{
     },
     Icon,
 };
-use fermi::UseAtomRef;
+
 use itertools::Itertools;
 
 use universal_inbox::{
@@ -36,45 +36,40 @@ use crate::{
 };
 
 #[component]
-pub fn IntegrationsPanel<'a>(
-    cx: Scope,
-    ui_model_ref: UseAtomRef<UniversalInboxUIModel>,
+pub fn IntegrationsPanel(
+    ui_model: Signal<UniversalInboxUIModel>,
     integration_providers: HashMap<IntegrationProviderKind, IntegrationProviderStaticConfig>,
     integration_connections: Vec<IntegrationConnection>,
-    on_connect: EventHandler<'a, (IntegrationProviderKind, Option<&'a IntegrationConnection>)>,
-    on_disconnect: EventHandler<'a, &'a IntegrationConnection>,
-    on_reconnect: EventHandler<'a, &'a IntegrationConnection>,
-    on_config_change: EventHandler<'a, (&'a IntegrationConnection, IntegrationConnectionConfig)>,
+    on_connect: EventHandler<(IntegrationProviderKind, Option<IntegrationConnection>)>,
+    on_disconnect: EventHandler<IntegrationConnection>,
+    on_reconnect: EventHandler<IntegrationConnection>,
+    on_config_change: EventHandler<(IntegrationConnection, IntegrationConnectionConfig)>,
 ) -> Element {
     let sorted_integration_providers: Vec<(
-        &IntegrationProviderKind,
-        &IntegrationProviderStaticConfig,
+        IntegrationProviderKind,
+        IntegrationProviderStaticConfig,
     )> = integration_providers
-        .iter()
+        .into_iter()
         .sorted_by(|(k1, _), (k2, _)| Ord::cmp(&k1.to_string(), &k2.to_string()))
         .collect();
 
-    render! {
+    rsx! {
         div {
             class: "flex flex-col w-auto gap-4 p-8",
 
             if !integration_connections.iter().any(|c| c.is_connected()) {
-                render! {
-                    div {
-                        class: "alert alert-info shadow-lg my-4",
+                div {
+                    class: "alert alert-info shadow-lg my-4",
 
-                        Icon { class: "w-5 h-5", icon: BsPlug }
-                        "You have no integrations connected. Connect an integration to get started."
-                    }
+                    Icon { class: "w-5 h-5", icon: BsPlug }
+                    "You have no integrations connected. Connect an integration to get started."
                 }
             } else if !integration_connections.iter().any(|c| c.is_connected_task_service()) {
-                render! {
-                    div {
-                        class: "alert alert-warning shadow-lg my-4",
+                div {
+                    class: "alert alert-warning shadow-lg my-4",
 
-                        Icon { class: "w-5 h-5", icon: BsExclamationTriangle }
-                        "To fully use Universal Inbox, you need to connect at least one task management service."
-                    }
+                    Icon { class: "w-5 h-5", icon: BsExclamationTriangle }
+                    "To fully use Universal Inbox, you need to connect at least one task management service."
                 }
             }
 
@@ -88,36 +83,32 @@ pub fn IntegrationsPanel<'a>(
                 div { class: "divider grow" }
             }
 
-            for (kind, config) in (&sorted_integration_providers) {
+            for (kind, config) in (sorted_integration_providers.clone()) {
                 if kind.is_notification_service() && config.is_implemented {
-                    render! {
-                        IntegrationSettings {
-                            ui_model_ref: ui_model_ref.clone(),
-                            kind: **kind,
-                            config: (*config).clone(),
-                            connection: integration_connections.iter().find(|c| c.provider.kind() == **kind).cloned(),
-                            on_connect: |c| on_connect.call((**kind, c)),
-                            on_disconnect: |c| on_disconnect.call(c),
-                            on_reconnect: |c| on_reconnect.call(c),
-                            on_config_change: |(ic, c)| on_config_change.call((ic, c)),
-                        }
+                    IntegrationSettings {
+                        ui_model: ui_model.clone(),
+                        kind: kind,
+                        config: config,
+                        connection: integration_connections.iter().find(move |c| c.provider.kind() == kind).cloned(),
+                        on_connect: move |c| on_connect.call((kind, c)),
+                        on_disconnect: move |c| on_disconnect.call(c),
+                        on_reconnect: move |c| on_reconnect.call(c),
+                        on_config_change: move |(ic, c)| on_config_change.call((ic, c)),
                     }
                 }
             }
 
-            for (kind, config) in (&sorted_integration_providers) {
+            for (kind, config) in (sorted_integration_providers.clone()) {
                 if kind.is_notification_service() && !config.is_implemented {
-                    render! {
-                        IntegrationSettings {
-                            ui_model_ref: ui_model_ref.clone(),
-                            kind: **kind,
-                            config: (*config).clone(),
-                            connection: integration_connections.iter().find(|c| c.provider.kind() == **kind).cloned(),
-                            on_connect: |c| on_connect.call((**kind, c)),
-                            on_disconnect: |c| on_disconnect.call(c),
-                            on_reconnect: |c| on_reconnect.call(c),
-                            on_config_change: |(ic, c)| on_config_change.call((ic, c)),
-                        }
+                    IntegrationSettings {
+                        ui_model: ui_model.clone(),
+                        kind: kind,
+                        config: config,
+                        connection: integration_connections.iter().find(move |c| c.provider.kind() == kind).cloned(),
+                        on_connect: move |c| on_connect.call((kind, c)),
+                        on_disconnect: move |c| on_disconnect.call(c),
+                        on_reconnect: move |c| on_reconnect.call(c),
+                        on_config_change: move |(ic, c)| on_config_change.call((ic, c)),
                     }
                 }
             }
@@ -132,36 +123,32 @@ pub fn IntegrationsPanel<'a>(
                 div { class: "divider grow" }
             }
 
-            for (kind, config) in (&sorted_integration_providers) {
+            for (kind, config) in (sorted_integration_providers.clone()) {
                 if kind.is_task_service() && config.is_implemented {
-                    render! {
-                        IntegrationSettings {
-                            ui_model_ref: ui_model_ref.clone(),
-                            kind: **kind,
-                            config: (*config).clone(),
-                            connection: integration_connections.iter().find(|c| c.provider.kind() == **kind).cloned(),
-                            on_connect: |c| on_connect.call((**kind, c)),
-                            on_disconnect: |c| on_disconnect.call(c),
-                            on_reconnect: |c| on_reconnect.call(c),
-                            on_config_change: |(ic, c)| on_config_change.call((ic, c)),
-                        }
+                    IntegrationSettings {
+                        ui_model: ui_model.clone(),
+                        kind: kind,
+                        config: config,
+                        connection: integration_connections.iter().find(move |c| c.provider.kind() == kind).cloned(),
+                        on_connect: move |c| on_connect.call((kind, c)),
+                        on_disconnect: move |c| on_disconnect.call(c),
+                        on_reconnect: move |c| on_reconnect.call(c),
+                        on_config_change: move |(ic, c)| on_config_change.call((ic, c)),
                     }
                 }
             }
 
-            for (kind, config) in (&sorted_integration_providers) {
+            for (kind, config) in (sorted_integration_providers.clone()) {
                 if kind.is_task_service() && !config.is_implemented {
-                    render! {
-                        IntegrationSettings {
-                            ui_model_ref: ui_model_ref.clone(),
-                            kind: **kind,
-                            config: (*config).clone(),
-                            connection: integration_connections.iter().find(|c| c.provider.kind() == **kind).cloned(),
-                            on_connect: |c| on_connect.call((**kind, c)),
-                            on_disconnect: |c| on_disconnect.call(c),
-                            on_reconnect: |c| on_reconnect.call(c),
-                            on_config_change: |(ic, c)| on_config_change.call((ic, c)),
-                        }
+                    IntegrationSettings {
+                        ui_model: ui_model.clone(),
+                        kind: kind,
+                        config: config,
+                        connection: integration_connections.iter().find(move |c| c.provider.kind() == kind).cloned(),
+                        on_connect:move |c| on_connect.call((kind, c)),
+                        on_disconnect:move |c| on_disconnect.call(c),
+                        on_reconnect:move |c| on_reconnect.call(c),
+                        on_config_change:move |(ic, c)| on_config_change.call((ic, c)),
                     }
                 }
             }
@@ -170,19 +157,18 @@ pub fn IntegrationsPanel<'a>(
 }
 
 #[component]
-pub fn IntegrationSettings<'a>(
-    cx: Scope,
-    ui_model_ref: UseAtomRef<UniversalInboxUIModel>,
+pub fn IntegrationSettings(
+    ui_model: Signal<UniversalInboxUIModel>,
     kind: IntegrationProviderKind,
     config: IntegrationProviderStaticConfig,
-    connection: Option<Option<IntegrationConnection>>,
-    on_connect: EventHandler<'a, Option<&'a IntegrationConnection>>,
-    on_disconnect: EventHandler<'a, &'a IntegrationConnection>,
-    on_reconnect: EventHandler<'a, &'a IntegrationConnection>,
-    on_config_change: EventHandler<'a, (&'a IntegrationConnection, IntegrationConnectionConfig)>,
+    connection: ReadOnlySignal<Option<Option<IntegrationConnection>>>,
+    on_connect: EventHandler<Option<IntegrationConnection>>,
+    on_disconnect: EventHandler<IntegrationConnection>,
+    on_reconnect: EventHandler<IntegrationConnection>,
+    on_config_change: EventHandler<(IntegrationConnection, IntegrationConnectionConfig)>,
 ) -> Element {
     let (connection_button_label, connection_button_style, sync_message, provider) =
-        use_memo(cx, &connection.clone(), |connection| match connection {
+        use_memo(move || match connection() {
             Some(Some(IntegrationConnection {
                 status: IntegrationConnectionStatus::Validated,
                 provider: p @ IntegrationProvider::Slack { .. },
@@ -192,7 +178,7 @@ pub fn IntegrationSettings<'a>(
                 "Disconnect",
                 "btn-success",
                 Some("🟢 Integration is ready to receive events from Slack".to_string()),
-                Some(p),
+                Some(p.clone()),
             ),
             Some(Some(IntegrationConnection {
                 status: IntegrationConnectionStatus::Validated,
@@ -209,7 +195,7 @@ pub fn IntegrationSettings<'a>(
                         .with_timezone(&Local)
                         .to_rfc3339_opts(SecondsFormat::Secs, true)
                 )),
-                Some(provider),
+                Some(provider.clone()),
             ),
             Some(Some(IntegrationConnection {
                 status: IntegrationConnectionStatus::Validated,
@@ -220,7 +206,7 @@ pub fn IntegrationSettings<'a>(
                 "Disconnect",
                 "btn-success",
                 Some(format!("🔴 Last sync failed: {message}")),
-                Some(provider),
+                Some(provider.clone()),
             ),
             Some(Some(IntegrationConnection {
                 status: IntegrationConnectionStatus::Validated,
@@ -231,7 +217,7 @@ pub fn IntegrationSettings<'a>(
                 "Disconnect",
                 "btn-success",
                 Some("🟠 Not yet synced".to_string()),
-                Some(provider),
+                Some(provider.clone()),
             ),
             Some(Some(IntegrationConnection {
                 status: IntegrationConnectionStatus::Failing,
@@ -244,9 +230,9 @@ pub fn IntegrationSettings<'a>(
                     ("Not yet implemented", "btn-disabled btn-ghost", None, None)
                 }
             }
-        });
+        })();
 
-    render! {
+    rsx! {
         div {
             class: "card w-full bg-base-200 text-base-content",
 
@@ -258,15 +244,15 @@ pub fn IntegrationSettings<'a>(
 
                     div {
                         class: "card-title",
-                        figure { class: "p-2", IntegrationProviderIcon { class: "w-8 h-8", provider_kind: *kind } }
+                        figure { class: "p-2", IntegrationProviderIcon { class: "w-8 h-8", provider_kind: kind } }
                         "{config.name}"
                     }
                     div {
                         class: "flex grow justify-start items-center",
                         if let Some(sync_message) = sync_message {
-                            render! { span { "{sync_message}" } }
+                            span { "{sync_message}" }
                         } else {
-                            render! { span {} }
+                            span {}
                         }
                     }
                     div {
@@ -275,10 +261,10 @@ pub fn IntegrationSettings<'a>(
                         button {
                             class: "btn {connection_button_style}",
                             onclick: move |_| {
-                                match connection {
-                                    Some(Some(c @ IntegrationConnection { status: IntegrationConnectionStatus::Validated, .. })) => on_disconnect.call(c),
-                                    Some(Some(c @ IntegrationConnection { status: IntegrationConnectionStatus::Failing, .. })) => on_reconnect.call(c),
-                                    Some(Some(c @ IntegrationConnection { status: IntegrationConnectionStatus::Created, .. })) => on_connect.call(Some(c)),
+                                match connection() {
+                                    Some(Some(c @ IntegrationConnection { status: IntegrationConnectionStatus::Validated, .. })) => on_disconnect.call(c.clone()),
+                                    Some(Some(c @ IntegrationConnection { status: IntegrationConnectionStatus::Failing, .. })) => on_reconnect.call(c.clone()),
+                                    Some(Some(c @ IntegrationConnection { status: IntegrationConnectionStatus::Created, .. })) => on_connect.call(Some(c.clone())),
                                     _ => on_connect.call(None),
                                 }
                             },
@@ -288,28 +274,22 @@ pub fn IntegrationSettings<'a>(
                     }
                 }
 
-                if let Some(Some(IntegrationConnection { failure_message: Some(failure_message), .. })) = connection {
-                    render! {
-                        div {
-                            class: "alert alert-error shadow-lg",
+                if let Some(Some(IntegrationConnection { failure_message: Some(failure_message), .. })) = connection() {
+                    div {
+                        class: "alert alert-error shadow-lg",
 
-                            Icon { class: "w-5 h-5", icon: BsExclamationTriangle }
-                            span { "{failure_message}" }
-                        }
+                        Icon { class: "w-5 h-5", icon: BsExclamationTriangle }
+                        span { "{failure_message}" }
                     }
                 }
 
-                if let Some(provider) = provider {
-                    if let Some(Some(connection)) = connection {
-                        render! {
-                            IntegrationConnectionProviderConfiguration {
-                                ui_model_ref: ui_model_ref.clone(),
-                                on_config_change: move |config| on_config_change.call((connection, config)),
-                                provider: provider.clone(),
-                            }
+                if let Some(provider) = &provider {
+                    if let Some(Some(connection)) = connection() {
+                        IntegrationConnectionProviderConfiguration {
+                            ui_model: ui_model,
+                            on_config_change: move |config| on_config_change.call((connection.clone(), config)),
+                            provider: provider.clone(),
                         }
-                    } else {
-                        None
                     }
                 }
 
@@ -320,59 +300,49 @@ pub fn IntegrationSettings<'a>(
 }
 
 #[component]
-pub fn Documentation(cx: Scope, config: IntegrationProviderStaticConfig) -> Element {
+pub fn Documentation(config: IntegrationProviderStaticConfig) -> Element {
     let mut doc_for_actions: Vec<(&String, &String)> = config.doc_for_actions.iter().collect();
     doc_for_actions.sort_by(|e1, e2| e1.0.cmp(e2.0));
 
-    render! {
+    rsx! {
         if let Some(ref warning_message) = config.warning_message {
             if !warning_message.is_empty() {
-                render! {
-                    div {
-                        class: "alert alert-warning shadow-lg my-4 py-2",
-                        Icon { class: "w-5 h-5", icon: BsExclamationTriangle }
-                        p { class: "max-w-full prose prose-sm", dangerous_inner_html: "{warning_message}" }
-                    }
+                div {
+                    class: "alert alert-warning shadow-lg my-4 py-2",
+                    Icon { class: "w-5 h-5", icon: BsExclamationTriangle }
+                    p { class: "max-w-full prose prose-sm", dangerous_inner_html: "{warning_message}" }
                 }
-            } else {
-                None
             }
         }
 
         if !config.doc.is_empty() {
-            render! {
-                details {
-                    class: "collapse collapse-arrow bg-neutral text-neutral-content",
-                    summary {
-                        class: "collapse-title text-lg font-medium min-h-min",
-                        div {
-                            class: "flex gap-2 items-center",
-                            Icon { class: "w-5 h-5 text-info", icon: BsInfoCircle }
-                            "Documentation"
-                        }
-                    }
-
+            details {
+                class: "collapse collapse-arrow bg-neutral text-neutral-content",
+                summary {
+                    class: "collapse-title text-lg font-medium min-h-min",
                     div {
-                        class: "collapse-content flex flex-col gap-2",
+                        class: "flex gap-2 items-center",
+                        Icon { class: "w-5 h-5 text-info", icon: BsInfoCircle }
+                        "Documentation"
+                    }
+                }
 
-                        Markdown { class: "!prose-invert", text: config.doc.clone() }
+                div {
+                    class: "collapse-content flex flex-col gap-2",
 
-                        div { class: "text-base", "Actions on notifications" }
-                        if !doc_for_actions.is_empty() {
-                            render! {
-                                table {
-                                    class: "table-auto",
+                    Markdown { class: "!prose-invert", text: config.doc.clone() }
 
-                                    tbody {
-                                        for (action, doc) in doc_for_actions.iter() {
-                                            render! {
-                                                tr {
-                                                    td { IconForAction { action: action.to_string() } }
-                                                    td { class: "pr-4 font-semibold", "{action}" }
-                                                    td { "{doc}" }
-                                                }
-                                            }
-                                        }
+                    div { class: "text-base", "Actions on notifications" }
+                    if !doc_for_actions.is_empty() {
+                        table {
+                            class: "table-auto",
+
+                            tbody {
+                                for (action, doc) in doc_for_actions.iter() {
+                                    tr {
+                                        td { IconForAction { action: action.to_string() } }
+                                        td { class: "pr-4 font-semibold", "{action}" }
+                                        td { "{doc}" }
                                     }
                                 }
                             }
@@ -385,60 +355,59 @@ pub fn Documentation(cx: Scope, config: IntegrationProviderStaticConfig) -> Elem
 }
 
 #[component]
-pub fn IconForAction(cx: Scope, action: String) -> Element {
+pub fn IconForAction(action: String) -> Element {
     let icon = match action.as_str() {
-        "delete" => render! { Icon { class: "w-5 h-5", icon: BsTrash } },
-        "unsubscribe" => render! { Icon { class: "w-5 h-5", icon: BsBellSlash } },
-        "snooze" => render! { Icon { class: "w-5 h-5", icon: BsClockHistory } },
-        "complete" => render! { Icon { class: "w-5 h-5", icon: BsCheck2 } },
-        _ => render! { div { class: "w-5 h-5" } },
+        "delete" => rsx! { Icon { class: "w-5 h-5", icon: BsTrash } },
+        "unsubscribe" => rsx! { Icon { class: "w-5 h-5", icon: BsBellSlash } },
+        "snooze" => rsx! { Icon { class: "w-5 h-5", icon: BsClockHistory } },
+        "complete" => rsx! { Icon { class: "w-5 h-5", icon: BsCheck2 } },
+        _ => rsx! { div { class: "w-5 h-5" } },
     };
 
-    render! {
+    rsx! {
         button {
             class: "btn btn-ghost btn-square pointer-events-none",
-            icon
+            { icon }
         }
     }
 }
 
 #[component]
-pub fn IntegrationConnectionProviderConfiguration<'a>(
-    cx: Scope,
+pub fn IntegrationConnectionProviderConfiguration(
     provider: IntegrationProvider,
-    ui_model_ref: UseAtomRef<UniversalInboxUIModel>,
-    on_config_change: EventHandler<'a, IntegrationConnectionConfig>,
+    ui_model: Signal<UniversalInboxUIModel>,
+    on_config_change: EventHandler<IntegrationConnectionConfig>,
 ) -> Element {
     match provider {
-        IntegrationProvider::GoogleMail { config, context } => render! {
+        IntegrationProvider::GoogleMail { config, context } => rsx! {
             GoogleMailProviderConfiguration {
-                on_config_change: |c| on_config_change.call(c),
+                on_config_change: move |c| on_config_change.call(c),
                 config: config.clone(),
                 context: context.clone(),
             }
         },
-        IntegrationProvider::Github { config } => render! {
+        IntegrationProvider::Github { config } => rsx! {
             GithubProviderConfiguration {
-                on_config_change: |c| on_config_change.call(c),
+                on_config_change: move |c| on_config_change.call(c),
                 config: config.clone()
             }
         },
-        IntegrationProvider::Todoist { config, .. } => render! {
+        IntegrationProvider::Todoist { config, .. } => rsx! {
             TodoistProviderConfiguration {
-                on_config_change: |c| on_config_change.call(c),
+                on_config_change: move |c| on_config_change.call(c),
                 config: config.clone()
             }
         },
-        IntegrationProvider::Linear { config } => render! {
+        IntegrationProvider::Linear { config } => rsx! {
             LinearProviderConfiguration {
-                on_config_change: |c| on_config_change.call(c),
+                on_config_change: move |c| on_config_change.call(c),
                 config: config.clone()
             }
         },
-        IntegrationProvider::Slack { config } => render! {
+        IntegrationProvider::Slack { config } => rsx! {
             SlackProviderConfiguration {
-                ui_model_ref: ui_model_ref.clone(),
-                on_config_change: |c| on_config_change.call(c),
+                ui_model: ui_model,
+                on_config_change: move |c| on_config_change.call(c),
                 config: config.clone(),
             }
         },

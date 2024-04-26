@@ -1250,7 +1250,7 @@
       }
     },
     "wasm-bindgen-cli@0.2.89": {
-      "last_modified": "2024-02-10T18:15:24Z",
+      "last_modified": "2024-02-10T13:15:24-05:00",
       "resolved": "github:NixOS/nixpkgs/10b813040df67c4039086db0f6eaf65c536886c6#wasm-bindgen-cli",
       "source": "devbox-search",
       "version": "0.2.89",

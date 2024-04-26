@@ -6,8 +6,7 @@ use dioxus_free_icons::icons::bs_icons::{
 };
 use dioxus_free_icons::icons::go_icons::GoMarkGithub;
 use dioxus_free_icons::Icon;
-use dioxus_router::prelude::*;
-use fermi::{use_atom_ref, use_atom_state};
+
 use gravatar::{Gravatar, Rating};
 
 use crate::model::{DEFAULT_USER_AVATAR, NOT_CONNECTED_USER_NAME};
@@ -19,10 +18,9 @@ use crate::{
     theme::toggle_dark_mode,
 };
 
-pub fn NavBar(cx: Scope) -> Element {
-    let user_service = use_coroutine_handle::<UserCommand>(cx).unwrap();
-    let connected_user_ref = use_atom_ref(cx, &CONNECTED_USER);
-    let connected_user = connected_user_ref.read();
+pub fn NavBar() -> Element {
+    let user_service = use_coroutine_handle::<UserCommand>();
+    let connected_user = CONNECTED_USER.read();
     let user_avatar = connected_user
         .as_ref()
         .map(|user| {
@@ -39,14 +37,12 @@ pub fn NavBar(cx: Scope) -> Element {
         .map(|user| user.first_name.clone())
         .unwrap_or_else(|| NOT_CONNECTED_USER_NAME.to_string());
 
-    let app_config_ref = use_atom_ref(cx, &APP_CONFIG);
-    let support_href = app_config_ref
+    let support_href = APP_CONFIG
         .read()
         .as_ref()
         .and_then(|config| config.support_href.clone());
-    let is_dark_mode = use_atom_state(cx, &IS_DARK_MODE);
 
-    render! {
+    rsx! {
         div {
             class: "navbar shadow-lg z-10 h-12",
 
@@ -79,14 +75,12 @@ pub fn NavBar(cx: Scope) -> Element {
                 }
 
                 if let Some(support_href) = support_href {
-                    render!(
-                        a {
-                            class: "btn btn-ghost btn-square",
-                            href: "{support_href}",
-                            title: "Contact support",
-                            Icon { class: "w-5 h-5", icon: BsQuestionLg }
-                        }
-                    )
+                    a {
+                        class: "btn btn-ghost btn-square",
+                        href: "{support_href}",
+                        title: "Contact support",
+                        Icon { class: "w-5 h-5", icon: BsQuestionLg }
+                    }
                 }
 
                 label {
@@ -94,9 +88,9 @@ pub fn NavBar(cx: Scope) -> Element {
                     input {
                         class: "hidden",
                         "type": "checkbox",
-                        checked: "{is_dark_mode}",
-                        onclick: |_| {
-                            is_dark_mode.set(toggle_dark_mode(true).expect("Failed to switch the theme"));
+                        checked: "{IS_DARK_MODE}",
+                        onclick: move |_| {
+                            *IS_DARK_MODE.write() = toggle_dark_mode(true).expect("Failed to switch the theme");
                         }
                     }
                     Icon { class: "swap-on w-5 h-5", icon: BsSun }
@@ -142,7 +136,7 @@ pub fn NavBar(cx: Scope) -> Element {
                         }
                         li {
                             a {
-                                onclick: |_| user_service.send(UserCommand::Logout),
+                                onclick: move |_| user_service.send(UserCommand::Logout),
                                 Icon { class: "w-5 h-5", icon: BsBoxArrowInLeft }
                                 p { "Logout" }
                             }
